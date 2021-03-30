@@ -37,15 +37,18 @@ class Lsort(object):
         self.has_genotypes = False
 
     def execute(self):
-
         counter = 0
+        samples_name_list = []  # Avoid same sample lines -D
         for vcf_file_name in self.vcf_file_names:
             input_stream = InputStream(vcf_file_name, self.tempdir)
-
             samples = l_bp.parse_vcf(input_stream, self.vcf_lines, self.vcf_headers, include_ref=self.include_ref)
             for sample in samples:
-                self.vcf_headers.append("##SAMPLE=<ID=" + sample + ">\n")
-                self.has_genotypes = True
+                if sample not in samples_name_list and sample != 'VARIOUS':
+                    self.vcf_headers.append("##SAMPLE=<ID=" + sample + ">\n")
+                    samples_name_list.append(sample)
+                    self.has_genotypes = True
+                else:
+                    self.has_genotypes = True
             counter += 1
             if counter > self.batchsize:
                 self.vcf_lines.sort(key=l_bp.vcf_line_key)
@@ -74,8 +77,13 @@ class Lsort(object):
         if self.has_genotypes:
             header_string = '\t'.join([header_string, 'FORMAT', 'VARIOUS'])
         self.vcf_headers.append(header_string + '\n')
-        self.vcf_headers.sort(cmp=l_bp.header_line_cmp)
-        self.output_handle.writelines(self.vcf_headers)
+        headers = []
+        for header in self.vcf_headers:
+            if header not in headers:
+                headers.append(header)
+        headers.sort(cmp=l_bp.header_line_cmp)
+
+        self.output_handle.writelines(headers)  # Use local headers to avoid dup header lines -D
 
     def write_temp_file(self):
         temp_outfile = open(os.path.join(self.tempdir,'%06i'%len(self.temp_files)),'w+b',64*1024)
@@ -126,3 +134,4 @@ if __name__ == "__main__":
     parser = command_parser()
     args = parser.parse_args()
     sys.exit(args.entry_point(args))
+

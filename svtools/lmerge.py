@@ -14,6 +14,7 @@ import argparse
 import heapq
 import re
 
+
 def null_format_string(format_string):
     null_list = []
     num_null_fields = len(format_string.split(':'))
@@ -26,15 +27,14 @@ def null_format_string(format_string):
 
 
 def merge_single_bp(BP, sample_order, v_id, use_product, vcf, vcf_out, include_genotypes):
-
-    A = BP[0].l.rstrip().split('\t')
-    var = Variant(A,vcf)
+    A = BP[0].l.rstrip().split('\t')  # Read original line -D
+    var = Variant(A, vcf)
     try:
         sname = var.get_info('SNAME')
         var.set_info('SNAME', sname + ':' + var.var_id)
     except KeyError:
         pass
-    var.var_id=str(v_id)
+    var.var_id = str(v_id)
 
     if use_product:
         var.set_info('ALG', 'PROD')
@@ -43,8 +43,8 @@ def merge_single_bp(BP, sample_order, v_id, use_product, vcf, vcf_out, include_g
 
     GTS = None
     if include_genotypes:
-        null_string = null_format_string(A[8])
-        gt_dict = { sname: A[9] }
+        null_string = null_format_string(A[8])  # FORMAT -D
+        gt_dict = {sname: A[9]}
         GTS = '\t'.join([gt_dict.get(x, null_string) for x in sample_order])
         var.gts = None
         var.gts_string = GTS
@@ -53,12 +53,10 @@ def merge_single_bp(BP, sample_order, v_id, use_product, vcf, vcf_out, include_g
 
 
 def order_cliques(BP, C):
-
-    #Sweep the set.  Find the largest intersecting set.  Remove it.  Continue.
-
-    BP_i = range(len(BP)) # index set of each node in the graph
+    # Sweep the set.  Find the largest intersecting set.  Remove it.  Continue.
+    BP_i = range(len(BP))  # index set of each node in the graph
     while len(BP_i) > 0:
-        h_l = [] #heap of left breakpoint end coordinates and node id (index). heapq is a min heap and the end coord is what will be used for the sorting.
+        h_l = []  # heap of left breakpoint end coordinates and node id (index). heapq is a min heap and the end coord is what will be used for the sorting.
         max_c = []
         max_c_len = 0
         for i in BP_i:
@@ -66,13 +64,13 @@ def order_cliques(BP, C):
             while (len(h_l) > 0) and (h_l[0][0] < BP[i].left.start):
                 heapq.heappop(h_l)
 
-            heapq.heappush(h_l, (BP[i].left.end, i)) # add to the heap
+            heapq.heappush(h_l, (BP[i].left.end, i))  # add to the heap
 
             # at this point everything in h_l intersects on the left
             # but we need to take into account what is going on on the right
-            h_r = [] # heap with rightmost starts
-            h_l_i = [x[1] for x in h_l] # this is all of the node ids on the heap currently
-            h_l_i.sort(key=lambda x:BP[x].right.start) # sort them by their right start
+            h_r = []  # heap with rightmost starts
+            h_l_i = [x[1] for x in h_l]  # this is all of the node ids on the heap currently
+            h_l_i.sort(key=lambda x: BP[x].right.start)  # sort them by their right start
             for j in h_l_i:
                 # remove anything in the heap that doesn't intersect with the current breakpoint on the right end
                 while (len(h_r) > 0) and (h_r[0][0] < BP[j].right.start):
@@ -91,19 +89,17 @@ def order_cliques(BP, C):
             BP_i.remove(c)
 
 
-
-def getCI95( p_L, p_R, max_i_L, max_i_R):
-
+def getCI95(p_L, p_R, max_i_L, max_i_R):
     ninefive_i_L_start = max_i_L
     ninefive_i_L_end = max_i_L
     ninefive_i_L_total = p_L[max_i_L]
 
     while (ninefive_i_L_total < 0.95):
-        if (ninefive_i_L_start <= 0) and (ninefive_i_L_end >= (len(p_L)-1)):
+        if (ninefive_i_L_start <= 0) and (ninefive_i_L_end >= (len(p_L) - 1)):
             break
         ninefive_i_L_start = max(0, ninefive_i_L_start - 1)
-        ninefive_i_L_end = min(len(p_L)-1, ninefive_i_L_end +1)
-        ninefive_i_L_total = sum(p_L[ninefive_i_L_start:ninefive_i_L_end+1])
+        ninefive_i_L_end = min(len(p_L) - 1, ninefive_i_L_end + 1)
+        ninefive_i_L_total = sum(p_L[ninefive_i_L_start:ninefive_i_L_end + 1])
 
     ninefive_i_L_start = ninefive_i_L_start - max_i_L
     ninefive_i_L_end = ninefive_i_L_end - max_i_L
@@ -113,22 +109,20 @@ def getCI95( p_L, p_R, max_i_L, max_i_R):
     ninefive_i_R_total = p_R[max_i_R]
 
     while (ninefive_i_R_total < 0.95):
-        if (ninefive_i_R_start <= 0) and (ninefive_i_R_end >= len(p_R)-1):
+        if (ninefive_i_R_start <= 0) and (ninefive_i_R_end >= len(p_R) - 1):
             break
         ninefive_i_R_start = max(0, ninefive_i_R_start - 1)
-        ninefive_i_R_end = min(len(p_R)-1, ninefive_i_R_end +1)
-        ninefive_i_R_total = sum(p_R[ninefive_i_R_start:ninefive_i_R_end+1])
+        ninefive_i_R_end = min(len(p_R) - 1, ninefive_i_R_end + 1)
+        ninefive_i_R_total = sum(p_R[ninefive_i_R_start:ninefive_i_R_end + 1])
 
     ninefive_i_R_end = ninefive_i_R_end - max_i_R
     ninefive_i_R_start = ninefive_i_R_start - max_i_R
-    CIPOS95=str(ninefive_i_L_start) + ',' + str(ninefive_i_L_end)
-    CIEND95=str(ninefive_i_R_start) + ',' + str(ninefive_i_R_end)
+    CIPOS95 = str(ninefive_i_L_start) + ',' + str(ninefive_i_L_end)
+    CIEND95 = str(ninefive_i_R_start) + ',' + str(ninefive_i_R_end)
     return [CIPOS95, CIEND95]
 
 
-
 def combine_pdfs(BP, c, use_product, weighting_scheme):
-
     L = []
     R = []
     for b_i in c:
@@ -149,10 +143,10 @@ def combine_pdfs(BP, c, use_product, weighting_scheme):
 
             A = BP[c[c_i]].l.rstrip().split('\t', 10)
             m = l_bp.to_map(A[7])
-            wt=int(m['SU'])
-            #sys.stderr.write("wt\t0\t"+str(wt)+"\n")
-            a_L[c_i]=[wt*ali for ali in a_L[c_i]]
-            a_R[c_i]=[wt*ari for ari in a_R[c_i]]
+            wt = int(m['SU'])
+            # sys.stderr.write("wt\t0\t"+str(wt)+"\n")
+            a_L[c_i] = [wt * ali for ali in a_L[c_i]]
+            a_R[c_i] = [wt * ari for ari in a_R[c_i]]
 
         elif weighting_scheme == 'carrier_wt':
 
@@ -160,16 +154,16 @@ def combine_pdfs(BP, c, use_product, weighting_scheme):
             m = l_bp.to_map(A[7])
             wt = 1
             if 'SNAME' in m:
-                wt=len(m['SNAME'].split(','))
-            a_L[c_i]=[wt*ali for ali in a_L[c_i]]
-            a_R[c_i]=[wt*ari for ari in a_R[c_i]]
+                wt = len(m['SNAME'].split(','))
+            a_L[c_i] = [wt * ali for ali in a_L[c_i]]
+            a_R[c_i] = [wt * ari for ari in a_R[c_i]]
 
         for i in range(len(a_L[c_i])):
-            #sys.stderr.write("L\t"+str(i)+"\t"+str(c_i)+"\t"+str(a_L[c_i][i])+"\n")
+            # sys.stderr.write("L\t"+str(i)+"\t"+str(c_i)+"\t"+str(a_L[c_i][i])+"\n")
             p_L[i] += a_L[c_i][i]
 
         for i in range(len(a_R[c_i])):
-            #sys.stderr.write("R\t"+str(i)+"\t"+str(c_i)+"\t"+str(a_R[c_i][i])+"\n")
+            # sys.stderr.write("R\t"+str(i)+"\t"+str(c_i)+"\t"+str(a_R[c_i][i])+"\n")
             p_R[i] += a_R[c_i][i]
 
     ALG = 'SUM'
@@ -212,39 +206,38 @@ def combine_pdfs(BP, c, use_product, weighting_scheme):
 
     sum_L = sum(p_L)
     sum_R = sum(p_R)
-    p_L = [x/sum_L for x in p_L]
-    p_R = [x/sum_L for x in p_R]
+    p_L = [x / sum_L for x in p_L]
+    p_R = [x / sum_L for x in p_R]
 
     [clip_start_L, clip_end_L] = l_bp.trim(p_L)
     [clip_start_R, clip_end_R] = l_bp.trim(p_R)
 
-    [ new_start_L, new_end_L ] = [ start_L + clip_start_L,  end_L - clip_end_L ]
-    [ new_start_R, new_end_R ] = [ start_R + clip_start_R, end_R - clip_end_R ]
+    [new_start_L, new_end_L] = [start_L + clip_start_L,  end_L - clip_end_L]
+    [new_start_R, new_end_R] = [start_R + clip_start_R, end_R - clip_end_R]
 
-    p_L = p_L[clip_start_L:len(p_L)-clip_end_L]
-    p_R = p_R[clip_start_R:len(p_R)-clip_end_R]
+    p_L = p_L[clip_start_L:len(p_L) - clip_end_L]
+    p_R = p_R[clip_start_R:len(p_R) - clip_end_R]
 
     s_p_L = sum(p_L)
     s_p_R = sum(p_R)
 
-    p_L = [x/s_p_L for x in p_L]
-    p_R = [x/s_p_R for x in p_R]
+    p_L = [x / s_p_L for x in p_L]
+    p_R = [x / s_p_R for x in p_R]
 
-    #sys.exit(1)
+    # sys.exit(1)
     return new_start_L, new_start_R, p_L, p_R, ALG
 
+
 def create_merged_variant(BP, c, v_id, vcf, use_product, weighting_scheme='unweighted'):
-
-    new_start_L, new_start_R, p_L , p_R, ALG = combine_pdfs(BP, c, use_product, weighting_scheme)
-
+    new_start_L, new_start_R, p_L, p_R, ALG = combine_pdfs(BP, c, use_product, weighting_scheme)
 
     max_i_L = p_L.index(max(p_L))
     max_i_R = p_R.index(max(p_R))
 
-    [cipos95, ciend95]=getCI95( p_L, p_R, max_i_L, max_i_R)
+    [cipos95, ciend95] = getCI95(p_L, p_R, max_i_L, max_i_R)
     new_pos_L = new_start_L + max_i_L
     new_pos_R = new_start_R + max_i_R
-    BP0=BP[c[0]]
+    BP0 = BP[c[0]]
 
     # sometimes after looking at PRs, the left and right can be swapped.
     # flip them back so downstream tools don't break.
@@ -254,37 +247,48 @@ def create_merged_variant(BP, c, v_id, vcf, use_product, weighting_scheme='unwei
         p_L, p_R = p_R, p_L
         max_i_R, max_i_L = max_i_L, max_i_R
 
-
-    A=BP0.l.rstrip().split('\t', 10)
+    A = BP0.l.rstrip().split('\t', 10)
 
     ALT = ''
     if BP0.sv_type == 'BND':
         if BP0.strands[:2] == '++':
             ALT = 'N]' + BP0.right.chrom + ':' + str(new_pos_R) + ']'
         elif BP0.strands[:2] == '-+':
-            ALT =  ']' + BP0.right.chrom + ':' + str(new_pos_R) + ']N'
+            ALT = ']' + BP0.right.chrom + ':' + str(new_pos_R) + ']N'
         elif BP0.strands[:2] == '+-':
             ALT = 'N[' + BP0.right.chrom + ':' + str(new_pos_R) + '['
         elif BP0.strands[:2] == '--':
-            ALT =  '[' + BP0.right.chrom + ':' + str(new_pos_R) + '[N'
+            ALT = '[' + BP0.right.chrom + ':' + str(new_pos_R) + '[N'
     else:
         ALT = '<' + BP0.sv_type + '>'
 
-    var_list=[ BP0.left.chrom,
-               new_pos_L,
-               str(v_id),
-               'N',
-               ALT,
-               0.0,
-               '.',
-               ''] + A[8:]
+    var_list = [BP0.left.chrom,
+                new_pos_L,
+                str(v_id),
+                'N',
+                ALT,
+                0.0,
+                '.',
+                '']
 
-    var=Variant(var_list, vcf)
+    format_field_list = []
+    for b_i in c:
+        A = BP[b_i].l.rstrip().split('\t')  # A is the original line in VCF -D
+        A_format_field = A[8].split(':')
+        for field in A_format_field:
+            if field not in format_field_list:
+                format_field_list.append(field)
+
+    format_string = ':'.join(format_field_list)
+    var_list.append(format_string)
+    var_list + A[9:]
+
+    var = Variant(var_list, vcf)
 
     var.set_info('SVTYPE', BP0.sv_type)
     var.set_info('ALG', ALG)
 
-    if var.get_info('SVTYPE')=='DEL':
+    if var.get_info('SVTYPE') == 'DEL':
         var.set_info('SVLEN', new_pos_L - new_pos_R)
     elif BP0.left.chrom == BP0.right.chrom:
         var.set_info('SVLEN', new_pos_R - new_pos_L)
@@ -296,12 +300,12 @@ def create_merged_variant(BP, c, v_id, vcf, use_product, weighting_scheme='unwei
     elif var.get_info('SVTYPE') == 'INS':
         var.set_info('END', new_pos_L)
     else:
-        var.set_info('END', new_pos_R )
+        var.set_info('END', new_pos_R)
 
     var.set_info('CIPOS95', cipos95)
     var.set_info('CIEND95', ciend95)
-    var.set_info('CIPOS', ','.join([str(x) for x in [-1*max_i_L, len(p_L) - max_i_L - 1]]))
-    var.set_info('CIEND', ','.join([str(x) for x in [-1*max_i_R, len(p_R) - max_i_R - 1]]))
+    var.set_info('CIPOS', ','.join([str(x) for x in [-1 * max_i_L, len(p_L) - max_i_L - 1]]))
+    var.set_info('CIEND', ','.join([str(x) for x in [-1 * max_i_R, len(p_R) - max_i_R - 1]]))
     var.set_info('PRPOS', ','.join([str(x) for x in p_L]))
     var.set_info('PREND', ','.join([str(x) for x in p_R]))
 
@@ -309,11 +313,10 @@ def create_merged_variant(BP, c, v_id, vcf, use_product, weighting_scheme='unwei
 
 
 def combine_var_support(var, BP, c, include_genotypes, sample_order):
-
     strand_map = {}
     qual = 0.0
 
-    [ SU, PE, SR ] = [0,0,0]
+    [SU, PE, SR] = [0, 0, 0]
 
     s_name_list = []
     s1_name_list = []
@@ -322,14 +325,14 @@ def combine_var_support(var, BP, c, include_genotypes, sample_order):
     gt_dict = dict()
 
     for b_i in c:
-        A = BP[b_i].l.rstrip().split('\t')
+        A = BP[b_i].l.rstrip().split('\t')  # A is the original line in VCF -D
         if A[5].isdigit():
             qual += float(A[5])
 
         m = l_bp.to_map(A[7])
 
         for strand_entry in m['STRANDS'].split(','):
-            s_type,s_count = strand_entry.split(':')
+            s_type, s_count = strand_entry.split(':')
             if s_type not in strand_map:
                 strand_map[s_type] = 0
             strand_map[s_type] += int(s_count)
@@ -342,15 +345,14 @@ def combine_var_support(var, BP, c, include_genotypes, sample_order):
             s_name_list.append(m['SNAME'] + ':' + A[2])
 
         if include_genotypes:
-
             if format_string == A[8]:
                 gt_dict[m['SNAME']] = A[9]
             else:
                 format_dict = dict(zip(A[8].split(':'), A[9].split(':')))
-                geno = ':'.join([format_dict.get(i, '.')  for i in var.format_list])
+                geno = ':'.join([format_dict.get(i, '.') for i in format_string.split(':')])
                 gt_dict[m['SNAME']] = geno
         else:
-            var.format_dict=None
+            var.format_dict = None
 
     if s_name_list:
         var.set_info('SNAME', ','.join(s_name_list))
@@ -359,8 +361,8 @@ def combine_var_support(var, BP, c, include_genotypes, sample_order):
     if include_genotypes:
         null_string = null_format_string(format_string)
         GTS = '\t'.join([gt_dict.get(x, null_string) for x in sample_order])
-        var.gts=None
-        var.gts_string=GTS
+        var.gts = None
+        var.gts_string = GTS
 
     strand_types_counts = []
     for strand in strand_map:
@@ -375,15 +377,14 @@ def combine_var_support(var, BP, c, include_genotypes, sample_order):
 
 
 def invtobnd(var):
-
-    strands=var.get_info('STRANDS')
+    strands = var.get_info('STRANDS')
     strand_dict = dict(x.split(':') for x in strands.split(','))
 
     for o in strand_dict.keys():
         if strand_dict[o] == '0':
             del(strand_dict[o])
 
-    strands=','.join(['%s:%s' % (o,strand_dict[o]) for o in strand_dict])
+    strands = ','.join(['%s:%s' % (o, strand_dict[o]) for o in strand_dict])
     var.set_info('STRANDS', strands)
 
     if strands[:2] == '++':
@@ -394,7 +395,7 @@ def invtobnd(var):
     var.set_info('SVTYPE', 'BND')
     var.alt = ALT
 
-    [ tempci, temp95 ] = [var.get_info('CIPOS'), var.get_info('CIPOS95')]
+    [tempci, temp95] = [var.get_info('CIPOS'), var.get_info('CIPOS95')]
     try:
         temppr = var.get_info('PRPOS')
     except KeyError:
@@ -403,17 +404,16 @@ def invtobnd(var):
     var.set_info('CIPOS', var.get_info('CIEND'))
     var.set_info('CIEND', tempci)
     var.set_info('CIPOS95', var.get_info('CIEND95'))
-    var.set_info('CIEND95', temp95 )
+    var.set_info('CIEND95', temp95)
     try:
         var.set_info('PRPOS', var.get_info('PREND'))
     except KeyError:
         raise MissingProbabilitiesException('Required tag PREND not found.')
-    var.set_info('PREND', temppr )
+    var.set_info('PREND', temppr)
 
 
 def write_var(var, vcf_out, include_genotypes=False):
-
-    v_id=var.var_id
+    v_id = var.var_id
     if var.get_info('CIPOS95') != '0,0' or var.get_info('CIEND95') != '0,0':
         var.set_info('IMPRECISE', True)
     else:
@@ -425,18 +425,17 @@ def write_var(var, vcf_out, include_genotypes=False):
 
     if var.alt not in ['<DEL>', '<DUP>', '<INV>', '<INS>']:
 
-        var.var_id=str(v_id)+'_1'
+        var.var_id = str(v_id) + '_1'
         var.set_info('EVENT', v_id)
-        var.set_info('MATEID', str(v_id)+'_2')
+        var.set_info('MATEID', str(v_id) + '_2')
         var.info.pop('END', None)
         var.info.pop('SVLEN', None)
 
-        varstring=var.get_var_string(use_cached_gt_string=True)
+        varstring = var.get_var_string(use_cached_gt_string=True)
         if not include_genotypes:
-            varstring='\t'.join(varstring.split('\t', 10)[:8])
+            varstring = '\t'.join(varstring.split('\t', 10)[:8])
 
-        vcf_out.write(varstring+'\n')
-
+        vcf_out.write(varstring + '\n')
         new_alt = ''
 
         if var.alt[0] == '[':
@@ -451,12 +450,12 @@ def write_var(var, vcf_out, include_genotypes=False):
         sep, chrom, pos = parse_bnd_alt_string(var.alt)
         var.chrom = chrom
         var.pos = int(pos)
-        var.var_id = str(v_id)+'_2'
-        var.set_info('MATEID', str(v_id)+'_1')
+        var.var_id = str(v_id) + '_2'
+        var.set_info('MATEID', str(v_id) + '_1')
         var.set_info('SECONDARY', True)
         var.alt = new_alt
 
-        [ tempci, temp95 ] = [var.get_info('CIPOS'), var.get_info('CIPOS95')]
+        [tempci, temp95] = [var.get_info('CIPOS'), var.get_info('CIPOS95')]
         try:
             temppr = var.get_info('PRPOS')
         except KeyError:
@@ -464,47 +463,42 @@ def write_var(var, vcf_out, include_genotypes=False):
         var.set_info('CIPOS', var.get_info('CIEND'))
         var.set_info('CIEND', tempci)
         var.set_info('CIPOS95', var.get_info('CIEND95'))
-        var.set_info('CIEND95', temp95 )
+        var.set_info('CIEND95', temp95)
         try:
             var.set_info('PRPOS', var.get_info('PREND'))
         except KeyError:
             raise MissingProbabilitiesException('Required tag PREND not found.')
-        var.set_info('PREND', temppr )
+        var.set_info('PREND', temppr)
 
-        varstring=var.get_var_string(use_cached_gt_string=True)
+        varstring = var.get_var_string(use_cached_gt_string=True)
         if not include_genotypes:
-            varstring='\t'.join(varstring.split('\t', 10)[:8])
+            varstring = '\t'.join(varstring.split('\t', 10)[:8])
 
-        vcf_out.write(varstring+'\n')
-
+        vcf_out.write(varstring + '\n')
 
     else:
-        varstring=var.get_var_string(use_cached_gt_string=True)
+        varstring = var.get_var_string(use_cached_gt_string=True)
         if not include_genotypes:
-            varstring='\t'.join(varstring.split('\t', 10)[:8])
+            varstring = '\t'.join(varstring.split('\t', 10)[:8])
 
-        vcf_out.write(varstring+'\n')
-
+        vcf_out.write(varstring + '\n')
 
 
 def merge(BP, sample_order, v_id, use_product, vcf, vcf_out, include_genotypes=False, weighting_scheme='unweighted'):
-
     if len(BP) == 1:
-       #merge a single breakpoint
-        v_id+=1
-        var=merge_single_bp(BP, sample_order, v_id, use_product, vcf, vcf_out, include_genotypes)
+        # merge a single breakpoint
+        v_id += 1
+        var = merge_single_bp(BP, sample_order, v_id, use_product, vcf, vcf_out, include_genotypes)
         write_var(var, vcf_out, include_genotypes)
-
     else:
-
         BP.sort(key=lambda x: x.left.start)
         ordered_cliques = []
         order_cliques(BP, ordered_cliques)
 
-        #merge cliques
+        # merge cliques
         for cliq in ordered_cliques:
-            v_id+=1
-            var=create_merged_variant(BP, cliq, v_id, vcf, use_product, weighting_scheme)
+            v_id += 1
+            var = create_merged_variant(BP, cliq, v_id, vcf, use_product, weighting_scheme)
             combine_var_support(var, BP, cliq, include_genotypes, sample_order)
             write_var(var, vcf_out, include_genotypes)
 
@@ -512,7 +506,6 @@ def merge(BP, sample_order, v_id, use_product, vcf, vcf_out, include_genotypes=F
 
 
 def r_cluster(BP_l, sample_order, v_id, use_product, vcf, vcf_out, include_genotypes=False, weighting_scheme='unweighted'):
-
     # need to resort based on the right side, then extract clusters
     BP_l.sort(key=lambda x: x.right.start)
     BP_l.sort(key=lambda x: x.right.chrom)
@@ -522,9 +515,7 @@ def r_cluster(BP_l, sample_order, v_id, use_product, vcf, vcf_out, include_genot
     BP_chr_r = ''
 
     for b in BP_l:
-        if (len(BP_r) == 0) or \
-           ((b.right.start <= BP_max_end_r) and \
-           (b.right.chrom == BP_chr_r)):
+        if (len(BP_r) == 0) or ((b.right.start <= BP_max_end_r) and (b.right.chrom == BP_chr_r)):
             BP_r.append(b)
             BP_max_end_r = max(BP_max_end_r, b.right.end)
             BP_chr_r = b.right.chrom
@@ -540,18 +531,15 @@ def r_cluster(BP_l, sample_order, v_id, use_product, vcf, vcf_out, include_genot
     return v_id
 
 
-
 def l_cluster_by_line(file_name, tempdir, percent_slop=0, fixed_slop=0, use_product=False, include_genotypes=False, weighting_scheme='unweighted'):
-
     v_id = 0
 
     in_header = True
     header = []
     vcf = Vcf()
-    vcf_out=sys.stdout
+    vcf_out = sys.stdout
 
     with InputStream(file_name, tempdir) as vcf_stream:
-
         BP_l = []
         BP_sv_type = ''
         BP_max_end_l = -1
@@ -559,39 +547,40 @@ def l_cluster_by_line(file_name, tempdir, percent_slop=0, fixed_slop=0, use_prod
         sample_order = []
 
         for line in vcf_stream:
-
             if in_header:
-
                 if line.startswith('##'):
                     header.append(line)
                     continue
 
                 elif line.startswith('#CHROM'):
-                    v=line.rstrip().split('\t')
+                    v = line.rstrip().split('\t')  # #CHROM line split -> list -D
                     for headline in header:
-                        if headline[:8] == '##SAMPLE':
-                            sample_order.append(headline.rstrip()[13:-1])
-                    hline=''
-                    if include_genotypes :
+                        if headline[:8] == '##SAMPLE' and headline.rstrip()[13:-1] != 'VARIOUS':
+                            sample_order.append(headline.rstrip()[13:-1])  # maybe add sample name to samplr_order list. -D
+                    hline = ''  # Parsed #CHROM line from 'v' -D
+                    if include_genotypes:
+                        v = v[:9]  # Remove possible VARIOUS -D
                         v.extend(sample_order)
-                        hline='\t'.join(v)
-                    else :
-                        v=v[:8]
-                        hline='\t'.join(v)
+                        hline = '\t'.join(v)
+                    else:
+                        v = v[:8]  # No FORMAT field here. -D
+                        hline = '\t'.join(v)
                     header.append(hline)
-                    in_header=False
+                    in_header = False
                     vcf.add_header(header)
                     vcf.add_info('ALG', '1', 'String', 'Algorithm used to merge this breakpoint')
 
                     if include_genotypes:
-                        vcf_out.write(vcf.get_header()+'\n')
+                        vcf_out.write(vcf.get_header() + '\n')
                     else:
-                        vcf_out.write(vcf.get_header(False)+'\n')
+                        vcf_out.write(vcf.get_header(include_samples=False) + '\n')  # Not including samples here. -D
 
                 continue
 
-            b = Breakpoint(l_bp.parse_vcf_record(line), percent_slop=percent_slop, fixed_slop=fixed_slop)
-            if (len(BP_l) == 0) or ((b.left.start <= BP_max_end_l) and (b.left.chrom == BP_chr_l) and (b.sv_type == BP_sv_type)):
+            # Header is now parsed, then the main dish. -D
+
+            b = Breakpoint(l_bp.parse_vcf_record(line), percent_slop=percent_slop, fixed_slop=fixed_slop)  # percent_slop and fixed_slop is 0. -D
+            if (len(BP_l) == 0) or ((b.left.start <= BP_max_end_l) and (b.left.chrom == BP_chr_l) and (b.sv_type == BP_sv_type)):  # Same chrom svtype and start is small than previous end. -D
                 BP_l.append(b)
                 BP_max_end_l = max(BP_max_end_l, b.left.end)
                 BP_chr_l = b.left.chrom
@@ -601,17 +590,20 @@ def l_cluster_by_line(file_name, tempdir, percent_slop=0, fixed_slop=0, use_prod
                 v_id = r_cluster(BP_l, sample_order, v_id, use_product, vcf, vcf_out, include_genotypes, weighting_scheme)
                 BP_l = [b]
                 BP_max_end_l = b.left.end
-                BP_sv_type = b.sv_type
                 BP_chr_l = b.left.chrom
+                BP_sv_type = b.sv_type
 
         if len(BP_l) > 0:
             v_id = r_cluster(BP_l, sample_order, v_id, use_product, vcf, vcf_out, include_genotypes, weighting_scheme)
 
+
 def description():
     return 'merge LUMPY calls inside a single file from svtools lsort'
 
+
 def epilog():
     return 'Note that if both slop parameters are set then the maximum is used.'
+
 
 def add_arguments_to_parser(parser):
     parser.add_argument('-i', '--inFile', metavar='<FILE>', help='a sorted VCF file generated by svtools lsort. Each INFO field must contain an SNAME tag containing the sample name (e.g. SNAME=SAMPLE_NAME)')
@@ -623,22 +615,25 @@ def add_arguments_to_parser(parser):
     parser.add_argument('-t', '--tempdir', metavar='<DIR>', required=False, default=None, help='Directory for temp file downloads')
     parser.set_defaults(entry_point=run_from_args)
 
+
 def command_parser():
     parser = argparse.ArgumentParser(description=description(), epilog=epilog())
     add_arguments_to_parser(parser)
     return parser
 
+
 def run_from_args(args):
     l_cluster_by_line(args.inFile,
-            args.tempdir,
-            percent_slop=args.percent_slop,
-            fixed_slop=args.fixed_slop,
-            use_product=args.use_product,
-            include_genotypes=args.include_genotypes,
-            weighting_scheme=args.weighting_scheme)
+                      args.tempdir,
+                      percent_slop=args.percent_slop,
+                      fixed_slop=args.fixed_slop,
+                      use_product=args.use_product,
+                      include_genotypes=args.include_genotypes,
+                      weighting_scheme=args.weighting_scheme)
 
 
 if __name__ == "__main__":
     parser = command_parser()
     args = parser.parse_args()
     sys.exit(args.entry_point(args))
+

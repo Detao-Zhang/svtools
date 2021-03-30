@@ -3,6 +3,7 @@ import sys
 import l_bp
 from exceptions import MissingProbabilitiesException
 
+
 class BreakpointInterval(object):
     '''
     Class for storing the range and probability distribution
@@ -41,7 +42,7 @@ class BreakpointInterval(object):
         Normalize interval's probability to sum to 1
         '''
         sum_p = sum(self.p)
-        self.p = [float(x)/sum_p for x in self.p]
+        self.p = [float(x) / sum_p for x in self.p]
 
     def common_range(self, other):
         return max(self.start, other.start), min(self.end, other.end)
@@ -67,14 +68,14 @@ class Breakpoint(object):
         self.l = line
 
         (self.sv_type,
-        chr_l,
-        chr_r,
-        self.strands,
-        start_l,
-        end_l,
-        start_r,
-        end_r,
-        m) = l_bp.split_v(line)
+         chr_l,
+         chr_r,
+         self.strands,
+         start_l,
+         end_l,
+         start_r,
+         end_r,
+         m) = l_bp.split_v(line)
 
         try:
             self.left = BreakpointInterval(chr_l, start_l, end_l, self.floats_from_tag(m, 'PRPOS'))
@@ -100,16 +101,15 @@ class Breakpoint(object):
                                            self.strands,
                                            self.left.p,
                                            self.right.p]])
+
     def ovl(self, b):
         '''
         Calculate overlapping cumulative probability value as weight?
         0 if not overlapping.
         '''
-        if ((self.left.chrom != b.left.chrom) or
-            (self.right.chrom != b.right.chrom) or
-            (self.sv_type != b.sv_type)):
-                return 0
-        #get common intervals
+        if ((self.left.chrom != b.left.chrom) or (self.right.chrom != b.right.chrom) or (self.sv_type != b.sv_type)):
+            return 0
+        # get common intervals
         c_start_l, c_end_l = self.left.common_range(b.left)
         c_start_r, c_end_r = self.right.common_range(b.right)
 

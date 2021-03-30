@@ -18,6 +18,7 @@ def find_all(a_str, sub):
         yield start
         start += len(sub) # use start += 1 to find overlapping matches
 
+
 def parse_vcf(vcf_file_stream, vcf_lines, vcf_headers, add_sname=True, include_ref=False):
     header = ''
     samples = ''
@@ -78,8 +79,8 @@ def parse_vcf(vcf_file_stream, vcf_lines, vcf_headers, add_sname=True, include_r
 
     return samples
 
-def parse_vcf_record(vcf_line):
 
+def parse_vcf_record(vcf_line):
     A = vcf_line.rstrip().split('\t')
     if not 'SECONDARY' in A[7]:
 
@@ -92,29 +93,30 @@ def parse_vcf_record(vcf_line):
 
                 if neg_s > 0:
                     neg_e = neg_s + A[7][neg_s:].find(';')
-                    pre=A[7][:neg_s]
-                    mid=A[7][neg_s:neg_e]
-                    post=A[7][neg_e:]
+                    pre = A[7][:neg_s]
+                    mid = A[7][neg_s:neg_e]
+                    post = A[7][neg_e:]
                     A[7] = pre + '++:0,' + mid + post
                 else:
                     pos_e = pos_s + A[7][pos_s:].find(';')
-                    pre=A[7][:pos_s]
-                    mid=A[7][pos_s:pos_e]
-                    post=A[7][pos_e:]
+                    pre = A[7][:pos_s]
+                    mid = A[7][pos_s:pos_e]
+                    post = A[7][pos_e:]
                     A[7] = pre + mid + ',--:0' + post
 
                 A[7] = 'SVTYPE=INV' + A[7][10:] + ';END=' + o_pos
                 A[4] = '<INV>'
-                vcf_line='\t'.join(A) + '\n'
+                vcf_line = '\t'.join(A) + '\n'
 
     return vcf_line
 
-def split_v(l):
+
+def split_v(line):  # Change variable name to line -D
     '''
     Split a VCF line into constituents and return a subset of values in an array
     '''
-    A = l.rstrip().split('\t', 8)
-    m = to_map(A[7])
+    A = line.rstrip().split('\t', 8)
+    m = to_map(A[7])  # INFO -D
 
     chr_l = A[0]
     pos_l = int(A[1])
@@ -126,7 +128,7 @@ def split_v(l):
         m['END'] = pos_r
         pos_r = int(pos_r)
     elif m['SVTYPE'] == 'INS':
-        pos_r=pos_l+int(m['SVLEN'])
+        pos_r = pos_l + int(m['SVLEN'])
     else:
         pos_r = int(m['END'])
 
@@ -138,7 +140,8 @@ def split_v(l):
 
     strands = m['STRANDS']
 
-    return [m['SVTYPE'],chr_l,chr_r,strands,start_l,end_l,start_r,end_r,m]
+    return [m['SVTYPE'], chr_l, chr_r, strands, start_l, end_l, start_r, end_r, m]
+
 
 def to_map(s):
     '''
@@ -153,6 +156,7 @@ def to_map(s):
             m[A[0]] = None
 
     return m
+
 
 def vcf_line_key(l1):
     v1 = split_v(l1)[:8]
@@ -172,8 +176,10 @@ def vcf_line_cmp(l1, l2):
             return cmp(v1[i],v2[i])
     return 0
 
+
 def header_line_cmp(l1, l2):
     order = ['##source', \
+             '##contig', \
              '##INFO', \
              '##ALT', \
              '##FORMAT',\
@@ -204,6 +210,7 @@ def header_line_cmp(l1, l2):
     if h2 not in order:
         return 1
     return cmp(order.index(h1),order.index(h2))
+
 
 def trim(A):
     '''
@@ -265,3 +272,4 @@ def align_intervals(I):
 
     # one interval. last element is array of arrays of probs covering entire interval
     return [start, end, new_I]
+

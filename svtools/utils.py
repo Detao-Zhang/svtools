@@ -13,10 +13,11 @@ logzero.setup_default_logger(formatter=logfmt)
 
 storage_client = None
 
+
 class InputStream(object):
     '''This class handles opening either stdin or a gzipped or non-gzipped file'''
 
-    def __init__(self, string = None, tempdir = None):
+    def __init__(self, string=None, tempdir=None):
         '''Create a new wrapper around a stream'''
         self.tempdir = tempdir
         if string in (None, '-', 'stdin') and self.valid(string):
@@ -40,26 +41,28 @@ class InputStream(object):
         if not os.path.exists(workspace):
             logger.info("Creating directory: {}".format(workspace))
             os.makedirs(workspace)
+        '''
         #Note: this will only work on the cloud
         #If you have to run outside the cloud you could authenticate
         #with `gcloud auth application-default login` but this is
         #actually not a good idea to do as yourself.  Use a service
         #account if you have to do this.
         #See: https://cloud.google.com/sdk/gcloud/reference/auth/application-default/login
+        '''
         global storage_client
         if storage_client is None:
-          import google.auth
-          from google.cloud import storage
-          credentials, project = google.auth.default()
-          storage_client = storage.Client(credentials=credentials, project=project)
-          logger.info("Getting storage client")
+            import google.auth
+            from google.cloud import storage
+            credentials, project = google.auth.default()
+            storage_client = storage.Client(credentials=credentials, project=project)
+            logger.info("Getting storage client")
         return self.download_blob(string, storage_client, workspace)
 
     def md5(self, filepath):
         with open(filepath, 'rb') as fh:
             m = hashlib.md5()
             while True:
-                data = fh.read(8192) # 8kb chunk
+                data = fh.read(8192)  # 8kb chunk
                 if not data:
                     break
                 m.update(data)
@@ -91,8 +94,8 @@ class InputStream(object):
         return dstpath
 
     def readline(self):
-        l = self.handle.readline()
-        return l
+        line = self.handle.readline()
+        return line
 
     @staticmethod
     def valid(string):
@@ -117,6 +120,7 @@ class InputStream(object):
         '''Close the underlying handle'''
         return self.handle.close()
 
+
 def parse_bnd_alt_string(alt_string):
     '''
     Parse the BND alt string and return separators and region
@@ -130,3 +134,4 @@ def parse_bnd_alt_string(alt_string):
     chrom2, breakpoint2 = region.rsplit(':', 1)
     breakpoint2 = breakpoint2
     return sep1, chrom2, breakpoint2
+
