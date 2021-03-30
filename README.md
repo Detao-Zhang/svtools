@@ -6,6 +6,13 @@ pip install .
 
 This fork fixed some bugs from original repositoriy and added some customization.
 
+### TODO list
+- [ ] Implement more customizations
+- [ ] Bugfix
+- [ ] Switch to Python 3
+
+---
+
 # svtools - Comprehensive utilities to explore structural variations in genomes
 
 [![License](https://img.shields.io/github/license/hall-lab/svtools.svg)](LICENSE.txt)
