@@ -1,3 +1,11 @@
+## Note
+Install HEAD version with `pip`
+```
+pip install .
+```
+
+This fork fixed some bugs from original repositoriy and added some customization.
+
 # svtools - Comprehensive utilities to explore structural variations in genomes
 
 [![License](https://img.shields.io/github/license/hall-lab/svtools.svg)](LICENSE.txt)
@@ -10,7 +18,7 @@
 ## Summary
 `svtools` is a suite of utilities designed to help bioinformaticians construct and explore cohort-level structural variation calls. It is designed to efficiently merge and genotype calls from [`speedseq sv`](https://github.com/hall-lab/speedseq) across thousands to tens of thousands of genomes.
 
-## Table of Contents
+Table of Contents
 1. [Requirements](#requirements)
 2. [Installation](#installation)
 3. [Obtaining help](#obtaining-help)
