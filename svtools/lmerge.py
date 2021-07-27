@@ -31,10 +31,11 @@ def merge_single_bp(BP, sample_order, v_id, use_product, vcf, vcf_out, include_g
     var = Variant(A, vcf)
     try:
         sname = var.get_info('SNAME')
-        var.set_info('SNAME', sname + ':' + var.var_id)
+        # var.set_info('SNAME', sname + ':' + var.var_id)  # commented out this line -D
     except KeyError:
         pass
     var.var_id = str(v_id)
+    sname_list = sname.split(',')
 
     if use_product:
         var.set_info('ALG', 'PROD')
@@ -44,7 +45,11 @@ def merge_single_bp(BP, sample_order, v_id, use_product, vcf, vcf_out, include_g
     GTS = None
     if include_genotypes:
         null_string = null_format_string(A[8])  # FORMAT -D
-        gt_dict = {sname: A[9]}
+        gt_str = A[9:]
+        non_null_gt_list = [i for i in gt_str if set(re.split('[:/]', i)) != {'.'}]
+
+        assert len(sname.split(',')) == len(non_null_gt_list)
+        gt_dict = dict(zip(sname.split(','), non_null_gt_list))
         GTS = '\t'.join([gt_dict.get(x, null_string) for x in sample_order])
         var.gts = None
         var.gts_string = GTS
@@ -319,7 +324,6 @@ def combine_var_support(var, BP, c, include_genotypes, sample_order):
     [SU, PE, SR] = [0, 0, 0]
 
     s_name_list = []
-    s1_name_list = []
 
     format_string = var.get_format_string()
     gt_dict = dict()
@@ -329,7 +333,7 @@ def combine_var_support(var, BP, c, include_genotypes, sample_order):
         if A[5].isdigit():
             qual += float(A[5])
 
-        m = l_bp.to_map(A[7])
+        m = l_bp.to_map(A[7])  # Dict of the SV INFO string -D
 
         for strand_entry in m['STRANDS'].split(','):
             s_type, s_count = strand_entry.split(':')
@@ -342,25 +346,56 @@ def combine_var_support(var, BP, c, include_genotypes, sample_order):
         SR += int(m['SR'])
 
         if 'SNAME' in m:
-            s_name_list.append(m['SNAME'] + ':' + A[2])
+            # s_name_list.append(m['SNAME'] + ':' + A[2])  # Append the SV ID field (3rd one) -D
+            s_name_list += m['SNAME'].split(',')
 
         if include_genotypes:
-            if format_string == A[8]:
-                gt_dict[m['SNAME']] = A[9]
-            else:
-                format_dict = dict(zip(A[8].split(':'), A[9].split(':')))
-                geno = ':'.join([format_dict.get(i, '.') for i in format_string.split(':')])
-                gt_dict[m['SNAME']] = geno
+            gt_dict_local = {}
+            gt_str = A[9:]
+            gt_sname_list = m['SNAME'].split(',')
+            non_null_gt_list = [i for i in gt_str if set(re.split('[:/]', i)) != {'.'}]
+            assert len(gt_sname_list) == len(non_null_gt_list)
+
+            # if format_string == A[8]:
+            #     gt_dict_local = dict(zip(gt_sname_list, [[i] for i in non_null_gt_list]))
+            # else:
+            format_dict_list = [dict(zip(A[8].split(':'), i.split(':'))) for i in non_null_gt_list]
+            # geno_list = [':'.join([j.get(i, '.') for i in format_string.split(':')]) for j in format_dict_list]
+            gt_dict_local = dict(zip(gt_sname_list, [[i] for i in format_dict_list]))
+
+            for key in gt_dict_local:
+                if key not in gt_dict:
+                    gt_dict[key] = gt_dict_local[key]
+                else:
+                    gt_dict[key] += gt_dict_local[key]
+
         else:
             var.format_dict = None
 
     if s_name_list:
+        # s_name_list = list(set(s_name_list))
+        s_name_list = sorted(list(set(s_name_list)), key=lambda x: sample_order.index(x))  # Addressing duplication -D
+        assert len(s_name_list) == len(gt_dict)
         var.set_info('SNAME', ','.join(s_name_list))
 
     GTS = None
     if include_genotypes:
         null_string = null_format_string(format_string)
-        GTS = '\t'.join([gt_dict.get(x, null_string) for x in sample_order])
+        gt_dict_combined = {}
+        for key in gt_dict:
+            if len(gt_dict[key]) == 1:
+                gt_dict_combined[key] = ':'.join([gt_dict[key][0].get(i, '.') for i in format_string.split(':')])
+            else:
+                d = {}
+                for gt_key in format_string.split(':'):
+                    l1 = [i.get(gt_key, None) for i in gt_dict[key]]
+                    l2 = list(set([i for i in l1 if i is not None]))
+                    d[gt_key] = '~'.join(l2)
+
+                gt_dict_combined[key] = ':'.join([d.get(i, '.') for i in format_string.split(':')])
+
+
+        GTS = '\t'.join([gt_dict_combined.get(x, null_string) for x in sample_order])
         var.gts = None
         var.gts_string = GTS
 
@@ -636,4 +671,3 @@ if __name__ == "__main__":
     parser = command_parser()
     args = parser.parse_args()
     sys.exit(args.entry_point(args))
-

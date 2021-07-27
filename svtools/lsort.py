@@ -5,8 +5,6 @@ ar=os.path.dirname(os.path.realpath(__file__)).split('/')
 svtpath='/'.join(ar[0:(len(ar)-1)])
 sys.path.insert(1, svtpath)
 import svtools.l_bp as l_bp
-
-
 import os
 import gzip
 import heapq
@@ -29,7 +27,7 @@ class Lsort(object):
             self.tempdir = gettempdir()
         self.batchsize = batchsize
         self.include_ref = include_ref
-        self.vcf_file_names = vcf_file_names
+        self.vcf_file_names = vcf_file_names  # VCF file list -D
         self.vcf_lines = []
         self.vcf_headers = []
         self.temp_files = []
@@ -44,7 +42,7 @@ class Lsort(object):
             samples = l_bp.parse_vcf(input_stream, self.vcf_lines, self.vcf_headers, include_ref=self.include_ref)
             for sample in samples:
                 if sample not in samples_name_list and sample != 'VARIOUS':
-                    self.vcf_headers.append("##SAMPLE=<ID=" + sample + ">\n")
+                    # self.vcf_headers.append("##SAMPLE=<ID=" + sample + ">\n")
                     samples_name_list.append(sample)
                     self.has_genotypes = True
                 else:
@@ -54,6 +52,10 @@ class Lsort(object):
                 self.vcf_lines.sort(key=l_bp.vcf_line_key)
                 self.write_temp_file()
                 counter = 0
+
+        for sample_name in sorted(samples_name_list):
+            self.vcf_headers.append("##SAMPLE=<ID=" + sample_name + ">\n")  # -D
+
         # no need to write the final batch to file
         # FIXME Replace this with a new VCF class with the headers all added
         self.write_header()
@@ -69,10 +71,8 @@ class Lsort(object):
             os.remove(tmp.name)
 
     def write_header(self):
-        self.vcf_headers.append("##INFO=<ID=SNAME,Number=.,Type=String," + \
-            "Description=\"Source sample name\">\n")
-        self.vcf_headers.append("##INFO=<ID=ALG,Number=1,Type=String," + \
-            "Description=\"Evidence PDF aggregation algorithm\">\n")
+        self.vcf_headers.append("##INFO=<ID=SNAME,Number=.,Type=String," + "Description=\"Source sample name\">\n")
+        self.vcf_headers.append("##INFO=<ID=ALG,Number=1,Type=String," + "Description=\"Evidence PDF aggregation algorithm\">\n")
         header_string = "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO"
         if self.has_genotypes:
             header_string = '\t'.join([header_string, 'FORMAT', 'VARIOUS'])

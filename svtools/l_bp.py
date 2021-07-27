@@ -4,6 +4,7 @@ ar=os.path.dirname(os.path.realpath(__file__)).split('/')
 svtpath='/'.join(ar[0:(len(ar)-1)])
 sys.path.insert(1, svtpath)
 from svtools.utils import parse_bnd_alt_string
+import re
 
 
 def find_all(a_str, sub):
@@ -20,20 +21,30 @@ def find_all(a_str, sub):
 
 
 def parse_vcf(vcf_file_stream, vcf_lines, vcf_headers, add_sname=True, include_ref=False):
-    header = ''
-    samples = ''
+    # header = ''
+    samples = []
+    samples_header = []
 
     for l in vcf_file_stream:
         if l[0] == '#':
             if l[1] != '#':
-                samples = l.rstrip().split('\t')[9:]
+                samples_header = l.rstrip().split('\t')[9:]
+                if samples_header == ['VARIOUS']:
+                    samples_header = samples
+                elif len(samples) > 0:
+                    assert sorted(samples_header) == sorted(samples)
+                    samples = samples_header
+                else:
+                    samples = samples_header  # rewrite this block -D
             else:
                 # ignore fileDate
                 if l[:10] == '##fileDate':
                     continue
+                elif l[:8] == '##SAMPLE':
+                    samples.append(l[13:-2])  # Got '\n' here -D
                 if l not in vcf_headers:
                     vcf_headers.append(l)
-        else:
+        else:  # SV lines -D
             A = l.rstrip().split('\t')
             if not include_ref and (len(A) > 8 and 'GT' in A[8]):
                 has_nonref = False
@@ -42,18 +53,37 @@ def parse_vcf(vcf_file_stream, vcf_lines, vcf_headers, add_sname=True, include_r
                         has_nonref = True
                         break
                 if not has_nonref:
-                    continue
+                    continue  # if has_nonref is false, the line is wiped -D
 
-            if not 'SECONDARY' in A[7]:
+            if 'SECONDARY' not in A[7]:
+                if len(A) > 8 and len(samples_header) > 0:  # has genotype field -D
+                    sname_list = []
+                    gt_str = A[9:]
+                    assert len(samples_header) == len(gt_str)
+                    for i in range(len(gt_str)):
+                        if set(re.split('[:/]', gt_str[i])) != {'.'}:
+                            sname_list.append(samples_header[i])
+                else:
+                    sname_list = samples_header
 
-                if add_sname and (samples != []):
-                    A[7] += ';' + 'SNAME=' + ','.join(samples)
+                if 'SNAME=' in A[7]:
+                    m = to_map(A[7])
+                    existing_sname = m['SNAME'].split(',')
+                    try:
+                        assert existing_sname == sname_list
+                    except AssertionError:
+                        info_list = A[7].split(';')
+                        info_list = [i for i in info_list if not i.startswith('SNAME')]
+                        info_list.append('SNAME=' + ','.join(sname_list))
+                        A[7] = ';'.join(info_list)
+                        l = '\t'.join(A) + '\n'
+
+                elif add_sname and (sname_list != []) and 'SNAME=' not in A[7]:  # Try not to add multiple 'SNAME' label -D
+                    A[7] += ';' + 'SNAME=' + ','.join(sname_list)
                     l = '\t'.join(A) + '\n'
-
 
                 if 'SVTYPE=BND' in A[7]:
                     sep, o_chr, o_pos = parse_bnd_alt_string(A[4])
-
                     if (o_chr == A[0]) and (('--:' in A[7]) != ('++' in A[7])):
                         neg_s = A[7].find('--:')
                         pos_s = A[7].find('++:')
@@ -82,7 +112,7 @@ def parse_vcf(vcf_file_stream, vcf_lines, vcf_headers, add_sname=True, include_r
 
 def parse_vcf_record(vcf_line):
     A = vcf_line.rstrip().split('\t')
-    if not 'SECONDARY' in A[7]:
+    if 'SECONDARY' not in A[7]:
 
         if 'SVTYPE=BND' in A[7]:
             sep, o_chr, o_pos = parse_bnd_alt_string(A[4])
@@ -143,12 +173,13 @@ def split_v(line):  # Change variable name to line -D
     return [m['SVTYPE'], chr_l, chr_r, strands, start_l, end_l, start_r, end_r, m]
 
 
-def to_map(s):
+def to_map(string):
     '''
     Convert a string like one would find in a VCF info field to a dictionary
+    Convert INFO field string to a dictionary -D
     '''
     m = {}
-    for k_v in s.split(';'):
+    for k_v in string.split(';'):
         A = k_v.split('=')
         if len(A) > 1:
             m[A[0]] = A[1]

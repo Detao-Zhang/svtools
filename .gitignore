@@ -5,3 +5,4 @@
 *.old
 geno_refine_scripts/*
 .DS_Store
+.idea/*
