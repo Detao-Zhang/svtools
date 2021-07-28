@@ -375,7 +375,8 @@ def combine_var_support(var, BP, c, include_genotypes, sample_order):
     if s_name_list:
         # s_name_list = list(set(s_name_list))
         s_name_list = sorted(list(set(s_name_list)), key=lambda x: sample_order.index(x))  # Addressing duplication -D
-        assert len(s_name_list) == len(gt_dict)
+        if include_genotypes:
+            assert len(s_name_list) == len(gt_dict)
         var.set_info('SNAME', ','.join(s_name_list))
 
     GTS = None
