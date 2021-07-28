@@ -391,7 +391,7 @@ def combine_var_support(var, BP, c, include_genotypes, sample_order):
                 for gt_key in format_string.split(':'):
                     l1 = [i.get(gt_key, None) for i in gt_dict[key]]
                     l2 = list(set([i for i in l1 if i is not None]))
-                    d[gt_key] = '~'.join(l2)
+                    d[gt_key] = '|'.join(l2)
 
                 gt_dict_combined[key] = ':'.join([d.get(i, '.') for i in format_string.split(':')])
 
