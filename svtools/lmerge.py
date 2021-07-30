@@ -1,5 +1,3 @@
-import sys
-
 import svtools.l_bp as l_bp
 from svtools.breakpoint import Breakpoint
 import svtools.logspace as ls
@@ -48,8 +46,8 @@ def merge_single_bp(BP, sample_order, v_id, use_product, vcf, vcf_out, include_g
         gt_str = A[9:]
         non_null_gt_list = [i for i in gt_str if set(re.split('[:/]', i)) != {'.'}]
 
-        assert len(sname.split(',')) == len(non_null_gt_list)
-        gt_dict = dict(zip(sname.split(','), non_null_gt_list))
+        assert len(sname_list) == len(non_null_gt_list)
+        gt_dict = dict(zip(sname_list, non_null_gt_list))
         GTS = '\t'.join([gt_dict.get(x, null_string) for x in sample_order])
         var.gts = None
         var.gts_string = GTS
@@ -217,7 +215,7 @@ def combine_pdfs(BP, c, use_product, weighting_scheme):
     [clip_start_L, clip_end_L] = l_bp.trim(p_L)
     [clip_start_R, clip_end_R] = l_bp.trim(p_R)
 
-    [new_start_L, new_end_L] = [start_L + clip_start_L,  end_L - clip_end_L]
+    [new_start_L, new_end_L] = [start_L + clip_start_L, end_L - clip_end_L]
     [new_start_R, new_end_R] = [start_R + clip_start_R, end_R - clip_end_R]
 
     p_L = p_L[clip_start_L:len(p_L) - clip_end_L]
@@ -384,17 +382,28 @@ def combine_var_support(var, BP, c, include_genotypes, sample_order):
         null_string = null_format_string(format_string)
         gt_dict_combined = {}
         for key in gt_dict:
-            if len(gt_dict[key]) == 1:
-                gt_dict_combined[key] = ':'.join([gt_dict[key][0].get(i, '.') for i in format_string.split(':')])
+            sample_genotype_list = gt_dict[key]
+            if len(sample_genotype_list) == 1:
+                gt_dict_combined[key] = ':'.join([sample_genotype_list[0].get(i, '.') for i in format_string.split(':')])
             else:
-                d = {}
-                for gt_key in format_string.split(':'):
-                    l1 = [i.get(gt_key, None) for i in gt_dict[key]]
-                    l2 = list(set([i for i in l1 if i is not None]))
-                    d[gt_key] = '|'.join(l2)
+                sample_genotype_list = sorted(sample_genotype_list, key=lambda x: int(x['GQ']))
+                best_gq = sample_genotype_list[-1]
 
-                gt_dict_combined[key] = ':'.join([d.get(i, '.') for i in format_string.split(':')])
+                for other in sample_genotype_list:
+                    if other['GT'] != best_gq['GT']:
+                        continue
+                    else:
+                        for gt_key in other.keys():
+                            if gt_key not in best_gq:
+                                best_gq[gt_key] = other[gt_key]
 
+                # d = {}
+                # for gt_key in format_string.split(':'):
+                #     l1 = [i.get(gt_key, None) for i in sample_genotype_list]
+                #     l2 = list(set([i for i in l1 if i is not None]))
+                #     d[gt_key] = '|'.join(l2)
+
+                gt_dict_combined[key] = ':'.join([best_gq.get(i, '.') for i in format_string.split(':')])
 
         GTS = '\t'.join([gt_dict_combined.get(x, null_string) for x in sample_order])
         var.gts = None
